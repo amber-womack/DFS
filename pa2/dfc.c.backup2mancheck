@@ -1,0 +1,622 @@
+//to compile : gcc -Wall myclient.c -o myclient -lcrypto -lssl
+//gcc -Wall myserver.c -o myserver -lcrypto -lssl
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/socket.h> //for the sockets
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <arpa/inet.h> // for atoi
+#include <unistd.h> //for closing
+#include <string.h>
+#include <errno.h> //for perror
+#include <time.h>
+#include <sys/stat.h>
+#include <netinet/in.h> // for the structures
+#include <netdb.h>
+#include <sys/wait.h>
+#include <signal.h> //for forking
+#include <sys/poll.h> //for the timer function
+#include <openssl/md5.h>
+
+#define ERROR -1 //the error
+#define MAX_CLIENTS 10 // max clients to have in wait queue, listen call used by kernel
+#define MAX_DATA 1024 // size of the buffer, passed to send and receive
+
+
+int dfs1;
+int dfs2;
+int dfs3;
+int dfs4;
+
+struct config {
+    char * dfsOne;
+    char * dfsTwo;
+    char * dfsThree; 
+    char * dfsFour;
+    char * userName;
+    char * password;
+};
+
+int hash(char * filename){
+
+    int bytes;
+    unsigned char data[1024];
+    //int i = 0;
+    int md5hash;
+    unsigned char c[MD5_DIGEST_LENGTH];
+    //char *filename="1.txt";
+    FILE *inFile = fopen (filename, "rb");
+    MD5_CTX mdContext;
+    //md5 hash of a large file, provided the string 
+    if (inFile == NULL) {
+        printf ("%s can't be opened.\n", filename);
+        return 0;
+    }
+    MD5_Init (&mdContext);
+    while ((bytes = fread (data, 1, 1024, inFile)) != 0){
+        MD5_Update (&mdContext, data, bytes);
+    }
+    MD5_Final (c,&mdContext);
+    // while(i < MD5_DIGEST_LENGTH) 
+    // {
+    //     printf("%02x\n", c[i]);
+    //     i++;
+    // }
+    md5hash = c[MD5_DIGEST_LENGTH - 1] % 4;
+    //printf ("\n%d\n", md5hash);
+    //printf ("%s\n", filename);
+    fclose (inFile);
+    return md5hash;
+}
+// GET command downloads all available pieces of a file from all available DFS, if
+// the file is reconstructable then write the file into your working folder. If the
+// file is not reconstructable, then print “File is incomplete.”
+void get(){
+
+}
+//￼LIST command inquires what file is stored on DFS servers, and print file
+//names stored under Username on DFS servers
+void list(){
+
+}
+
+//￼PUT command uploads files onto DFS
+void put(char * filename){
+    FILE *fp_original;
+    long int filesize;
+
+    fp_original=fopen(filename, "r");
+    if(fp_original == NULL ) {
+        // Error, as expected.
+        perror( "Error opening file original\n" );
+        printf( "Error code opening file: %d\n", errno );
+        printf( "Error opening file: %s\n", strerror( errno ) );
+        exit(-1);
+    }
+
+    // Find the size of the file (using fseek and ftell). 
+    fseek(fp_original, 0, 2);
+    filesize = ftell(fp_original);
+    printf("the size of the file in bytes is : %ld\n", filesize);
+    //Then seek back to the beginning
+    rewind(fp_original);
+    // Determine the size you need to write to each file (size / n)
+    //k = size/4;
+   // printf("%li\n", k);
+
+    // Read one character at a time (use getc) and write to the corresponding file (putc)
+    // Use sprintf(fname, "%d.txt", index) to build names like "1.txt"
+    // Use fopen to open files and keep a FILE *current to which you write at each step
+    
+    char c;
+    int piecesize;
+    int piecesizelast;
+
+    char *piece_name1 = calloc(256,1);
+    char *piece_name2 = calloc(256,1);
+    char *piece_name3 = calloc(256,1);
+    char *piece_name4 = calloc(256,1);
+
+    strcat(piece_name1, "./temp/");
+    strcat(piece_name1, filename);
+    strcat(piece_name1, ".1");
+
+    strcat(piece_name2, "./temp/");
+    strcat(piece_name2, filename);
+    strcat(piece_name2, ".2");
+
+    strcat(piece_name3, "./temp/");
+    strcat(piece_name3, filename);
+    strcat(piece_name3, ".3");
+
+    strcat(piece_name4, "./temp/");
+    strcat(piece_name4, filename);
+    strcat(piece_name4, ".4");
+
+    FILE * fp_piece1;
+    FILE * fp_piece2;
+    FILE * fp_piece3;
+    FILE * fp_piece4;
+
+    printf("%s\n", piece_name1);
+    printf("%s\n", piece_name2);
+    printf("%s\n", piece_name3);
+    printf("%s\n", piece_name4);
+
+    fp_piece1 = fopen(piece_name1, "w");
+    fp_piece2 = fopen(piece_name2, "w");
+    fp_piece3 = fopen(piece_name3, "w");
+    fp_piece4 = fopen(piece_name4, "w");
+
+    if(fp_piece1 == NULL ) {
+        // Error, as expected.
+        perror( "Error opening file piece 1\n" );
+        printf( "Error code opening file: %d\n", errno );
+        printf( "Error opening file: %s\n", strerror( errno ) );
+        exit(-1);
+    }
+    if(fp_piece2 == NULL ) {
+        // Error, as expected.
+        perror( "Error opening file piece 2\n" );
+        printf( "Error code opening file: %d\n", errno );
+        printf( "Error opening file: %s\n", strerror( errno ) );
+        exit(-1);
+    }
+    if(fp_piece3 == NULL ) {
+        // Error, as expected.
+        perror( "Error opening file piece 3\n" );
+        printf( "Error code opening file: %d\n", errno );
+        printf( "Error opening file: %s\n", strerror( errno ) );
+        exit(-1);
+    }
+    if(fp_piece4 == NULL ) {
+        // Error, as expected.
+        perror( "Error opening file piece 4\n" );
+        printf( "Error code opening file: %d\n", errno );
+        printf( "Error opening file: %s\n", strerror( errno ) );
+        exit(-1);
+    }
+
+
+    if(filesize % 4 == 0){
+        printf("In even loop");
+
+        piecesize = filesize % 4;
+        
+        int i;
+        // piece 1
+        for(i=0; i == piecesize; i++) {
+            c = fgetc(fp_original);
+            fputc(c, fp_piece1);
+        }
+
+        // piece 2
+        for(i=0; i == piecesize; i++) {
+            c = fgetc(fp_original);
+            fputc(c, fp_piece2);
+        }
+
+        // piece 3
+        for(i=0; i == piecesize; i++) {
+            c = fgetc(fp_original);
+            fputc(c, fp_piece3);
+        }
+
+        // piece 4
+        for(i=0; i == piecesize; i++) {
+            c = fgetc(fp_original);
+            fputc(c, fp_piece4);
+        }
+    }
+    else if(filesize % 4 == 1){
+        printf("In +1 loop");
+
+        piecesize = filesize / 4;
+        piecesizelast = piecesize + 1;
+
+        int i;
+        
+        // piece 1
+        for(i=0; i < piecesize; i++) {
+            c = fgetc(fp_original);
+            fputc(c, fp_piece1);
+        }
+
+        // piece 2
+        for(i=0; i < piecesize; i++) {
+            c = fgetc(fp_original);
+            fputc(c, fp_piece2);
+        }
+
+        // piece 3
+        for(i=0; i < piecesize; i++) {
+            c = fgetc(fp_original);
+            fputc(c, fp_piece3);
+        }
+
+        // piece 4
+        for(i=0; i < piecesizelast; i++) {
+            c = fgetc(fp_original);
+            fputc(c, fp_piece4);
+        }
+    }
+    else if(filesize % 4 == 2){
+        printf("In +2 loop");
+
+        piecesize = filesize / 4;
+        piecesizelast = piecesize + 2;
+
+        int i;
+        
+        // piece 1
+        for(i=0; i < piecesize; i++) {
+            c = fgetc(fp_original);
+            fputc(c, fp_piece1);
+        }
+
+        // piece 2
+        for(i=0; i < piecesize; i++) {
+            c = fgetc(fp_original);
+            fputc(c, fp_piece2);
+        }
+
+        // piece 3
+        for(i=0; i < piecesize; i++) {
+            c = fgetc(fp_original);
+            fputc(c, fp_piece3);
+        }
+
+        // piece 4
+        for(i=0; i < piecesizelast; i++) {
+            c = fgetc(fp_original);
+            fputc(c, fp_piece4);
+        }
+    }
+    else if(filesize % 4 == 3){
+
+        printf("In +3 loop");
+
+        piecesize = filesize / 4;
+        piecesizelast = piecesize + 3;
+
+        int i;
+        
+        // piece 1
+        for(i=0; i < piecesize; i++) {
+            c = fgetc(fp_original);
+            fputc(c, fp_piece1);
+        }
+
+        // piece 2
+        for(i=0; i < piecesize; i++) {
+            c = fgetc(fp_original);
+            fputc(c, fp_piece2);
+        }
+
+        // piece 3
+        for(i=0; i < piecesize; i++) {
+            c = fgetc(fp_original);
+            fputc(c, fp_piece3);
+        }
+
+        // piece 4
+        for(i=0; i < piecesizelast; i++) {
+            c = fgetc(fp_original);
+            fputc(c, fp_piece4);
+        }
+    }
+
+    //close
+    fclose(fp_piece1);
+    fclose(fp_piece2);
+    fclose(fp_piece3);
+    fclose(fp_piece4);
+    fclose(fp_original);
+    
+    int serverDest;
+    serverDest = hash(filename);
+    char buffer[piecesize];
+    fp_piece1 = fopen("./temp/1.txt.1", "r");
+    fp_piece2 = fopen("./temp/1.txt.2", "r");
+    fp_piece3 = fopen("./temp/1.txt.3", "r");
+    fp_piece4 = fopen("./temp/1.txt.4", "r");
+
+    if(fp_piece1 == NULL ) {
+        // Error, as expected.
+        perror( "Error opening file piece 1-2\n" );
+        printf( "Error code opening file: %d\n", errno );
+        printf( "Error opening file: %s\n", strerror( errno ) );
+        exit(-1);
+    }
+    if(fp_piece2 == NULL ) {
+        // Error, as expected.
+        perror( "Error opening file piece 2-2\n" );
+        printf( "Error code opening file: %d\n", errno );
+        printf( "Error opening file: %s\n", strerror( errno ) );
+        exit(-1);
+    }
+    if(fp_piece3 == NULL ) {
+        // Error, as expected.
+        perror( "Error opening file piece 3-2\n" );
+        printf( "Error code opening file: %d\n", errno );
+        printf( "Error opening file: %s\n", strerror( errno ) );
+        exit(-1);
+    }
+    if(fp_piece4 == NULL ) {
+        // Error, as expected.
+        perror( "Error opening file piece 4-2\n" );
+        printf( "Error code opening file: %d\n", errno );
+        printf( "Error opening file: %s\n", strerror( errno ) );
+        exit(-1);
+    }
+
+    // SEND HEADER
+    //write(dfs1, "Amber Mypassword PUT", strlen(str));
+    //write(dfs2, "Amber Mypassword PUT", strlen(str));
+    //write(dfs3, "Amber Mypassword PUT", strlen(str));
+    //write(dfs4, "Amber Mypassword PUT", strlen(str));
+
+    if (serverDest == 0){
+        // SEND MESSAGE SIZE
+        char str[15];
+        sprintf(str, "%d", piecesize);
+        write(dfs1, str, strlen(str));
+
+        // SERVER 1 - PIECE 1
+        // CHECK FOR THE LINE
+        fread(buffer, 1, piecesize, fp_piece1);
+        int check;
+        char *checkstr;
+        checkstr = "0";
+        check = 0;
+        while(check != 1){  
+            read(dfs1, checkstr, 1); 
+            check = atoi(checkstr);
+        }
+        check = 0;
+        write(dfs1, buffer, piecesize);
+
+        // SERVER 1 - PIECE 2
+        // SEND THE MESSAGE
+        fread(buffer, 1, piecesize, fp_piece2);
+        check = 0;
+        while(check != 1){  
+            read(dfs1, checkstr, 1); 
+            check = atoi(checkstr);
+        }
+        check = 0;
+        write(dfs1, buffer, piecesize);
+
+        // SERVER 2 - PIECE 2
+        // SEND THE MESSAGE
+        fread(buffer, 1, piecesize, fp_piece2);
+        check = 0;
+        while(check != 1){  
+            read(dfs2, checkstr, 1); 
+            check = atoi(checkstr);
+        }
+        check = 0;
+        write(dfs2, buffer, piecesize);
+
+        // SERVER 2 - PIECE 3
+        // SEND THE MESSAGE
+        fread(buffer, 1, piecesize, fp_piece3);
+        check = 0;
+        while(check != 1){  
+            read(dfs2, checkstr, 1); 
+            check = atoi(checkstr);
+        }
+        check = 0;
+        write(dfs2, buffer, piecesize);
+
+        // SERVER 3 - PIECE 3
+        // SEND THE MESSAGE
+        fread(buffer, 1, piecesize, fp_piece3);
+        check = 0;
+        while(check != 1){  
+            read(dfs3, checkstr, 1); 
+            check = atoi(checkstr);
+        }
+        check = 0;
+        write(dfs3, buffer, piecesize);
+
+        // SERVER 3 - PIECE 4
+        // SEND THE MESSAGE
+        fread(buffer, 1, piecesize, fp_piece4);
+        check = 0;
+        while(check != 1){  
+            read(dfs3, checkstr, 1); 
+            check = atoi(checkstr);
+        }
+        check = 0;
+        write(dfs3, buffer, piecesize);
+
+        // SERVER 4 - PIECE 4
+        // SEND THE MESSAGE
+        fread(buffer, 1, piecesize, fp_piece4);
+        check = 0;
+        while(check != 1){  
+            read(dfs4, checkstr, 1); 
+            check = atoi(checkstr);
+        }
+        check = 0;
+        write(dfs4, buffer, piecesize);
+
+        // SERVER 4 - PIECE 1
+        // SEND THE MESSAGE
+        fread(buffer, 1, piecesize, fp_piece1);
+        check = 0;
+        while(check != 1){  
+            read(dfs4, checkstr, 1); 
+            check = atoi(checkstr);
+        }
+        check = 0;
+        write(dfs4, buffer, piecesize);
+    }
+
+    else if (serverDest == 1){
+
+    }
+
+    fclose(fp_piece1);
+    fclose(fp_piece2);
+    fclose(fp_piece3);
+    fclose(fp_piece4);
+}
+
+//----------------------------------------------------------------------------------------------
+//struct to parse the dfc.conf file
+struct config dfcConf(char * conf){  
+
+    struct config configfile;
+    char * line;
+    int parsecount = 0;
+    char * source = malloc(MAX_DATA);
+
+    //open the file, error if not
+    FILE *fp = fopen(conf, "r");
+    if (fp != NULL){
+        size_t newLen = fread(source, sizeof(char), MAX_DATA, fp);
+        if (newLen == 0){
+            fputs("Error reading file", stderr);
+        } 
+        else{
+            source[++newLen] = '\0'; //Just to be safe add null at end of char array 
+        }
+        fclose(fp);
+    }
+    //loop through the file, seperating on the : and new lines
+     while((line = strsep(&source, "\n")) != NULL){             
+        if(parsecount == 0){
+            configfile.dfsOne = strchr(line, ':');
+            configfile.dfsOne++;
+            printf("dfs1 = %s\n", configfile.dfsOne);
+        }
+        else if(parsecount == 1){
+            configfile.dfsTwo = strchr(line, ':');
+            configfile.dfsTwo++;
+            printf("dfs2 = %s\n", configfile.dfsTwo);
+        }
+        else if(parsecount == 2){
+            configfile.dfsThree = strchr(line, ':');
+            configfile.dfsThree++;
+            printf("dfs3 = %s\n", configfile.dfsThree);
+        }
+        else if(parsecount == 3){
+            configfile.dfsFour = strchr(line, ':');
+            configfile.dfsFour++;
+            printf("dfs4 = %s\n", configfile.dfsFour);
+        }
+        else if(parsecount == 4){
+            configfile.userName = strchr(line, ':');
+            configfile.userName++;
+            printf("username = %s\n", configfile.userName);
+        }
+        else if(parsecount == 5){
+            configfile.password = strchr(line, ':');
+            configfile.password++;
+            printf("password = %s\n", configfile.password);
+        }
+        parsecount++;
+    }
+    return configfile;
+}
+
+int connectport(const char *portnumber){
+    struct sockaddr_in remote_server;
+    int sock;
+    
+    if((sock = socket(AF_INET, SOCK_STREAM, 0)) == ERROR){
+        perror("socket");
+        exit(-1);
+    }
+
+    remote_server.sin_family = AF_INET;
+    remote_server.sin_port = htons(atoi(portnumber)); //portnumber
+    remote_server.sin_addr.s_addr = inet_addr("127.0.0.1"); //ip address
+    bzero(&remote_server.sin_zero, 8);
+
+    if((connect(sock, (struct sockaddr *) &remote_server, sizeof(struct sockaddr_in))) == ERROR){
+        perror("connect");
+        exit(-1);
+    }
+    return sock;
+}
+
+int main(int argc, char *argv[]){
+    char input[MAX_DATA];
+    char * line;
+    int parsecount = 0;
+    char * source;
+    char * piece;
+    char * filename = NULL;
+    char * request;
+    char * buf = malloc(MAX_DATA);
+    char * conf;
+
+    //dfc.conf from command line
+    conf = argv[1];
+    printf("%s\n", conf);
+    //call parsing function of dfc.conf
+    struct config configcount;
+    configcount = dfcConf(conf);
+
+    //connect the portnumber of each server from the config file
+    dfs1 = connectport(configcount.dfsOne);
+    dfs2 = connectport(configcount.dfsTwo);
+    dfs3 = connectport(configcount.dfsThree);
+    dfs4 = connectport(configcount.dfsFour);
+   
+
+    while(fgets(buf, MAX_DATA, stdin)) {
+        buf[strlen(buf) - 1] = '\0';    /* insure line null-terminated  */
+       
+        source = buf;
+        //parse the GET, PUT, or LIST REQUEST
+        while((line = strsep(&source, "\0")) != NULL){
+            while((piece = strsep(&line, " ")) != NULL){
+                if(parsecount == 0){
+                    request = piece;
+                    printf("%s\n", request);
+                }
+                else{
+
+                    filename = piece;
+                    printf("%s\n", filename);
+                }
+                parsecount++; 
+            }
+        }
+        parsecount = 0;
+        //check if the request is valid or not, and if the filename is valid or not
+        if (strcmp(request, "GET") == 0){
+            printf("valid get request\n");
+            if(filename == NULL){
+                printf("invalid file for GET\n");
+                exit(-1);
+            }       
+        }
+        else if (strcmp(request, "PUT") == 0){
+            printf("valid put request\n");
+            if(filename == NULL){
+                printf("invalid file for PUT\n");
+                exit(-1);
+            }
+            put(filename);
+        }
+        else if (strcmp(request, "LIST") == 0){
+            printf("valid list request\n");
+        }
+        else{
+            printf("invalid request sent\n");
+        }
+        filename = NULL;
+    
+    }
+    close(dfs1);
+    close(dfs2);
+    close(dfs3);
+    close(dfs4);
+    return 0;
+}
+
