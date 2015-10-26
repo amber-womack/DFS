@@ -1,0 +1,65 @@
+CS5273 Network Systems
+Fall 2015
+University of Colorado Boulder
+Programming Assignment 2
+DFS 
+
+By Amber Womack
+
+Inspired by work from BeeJ's and Vivan Ramachandran for basic echoSever code provided. 
+
+---Folders---
+pa2 			- Assignment description and documentation, main encasing folder
+DFS Folders 	- folders that will be created when running the program with subfolders inside for username and subfoldering
+
+---Files---
+README        	- This file
+dfc.c     		- The client side code with GET, PUT, and LIST requests
+dfc.conf		- Configuration file containing the client side user and password that will be accessing the information
+dfs.c 			- The server side code
+dfs.conf 		- Configuration file containing the server side user name and passwords that will be allowed to access the information
+1.txt 			- file contating the information to be parsed into 4 pieces 
+
+---Executables---
+Makefile 		- will make or build the files and execute
+dfc				- Client executable for dfc.c
+dfs				- Server executable for dfs.c
+
+---Documentation---
+Programming assignment2.pdf - Assignment Instructions and Tips
+http://stackoverflow.com/questions/10324611/how-to-calculate-the-md5-hash-of-a-large-file-in-c - for hashing library used
+http://stackoverflow.com/questions/8072868/simple-xor-algorithm - for encrytption library used
+
+---Building---
+To run the program, go to the correct zipped folder or pa2 assignment
+Run on command line: $ gcc dfc.c -o dfc - to compile
+Run the executable: $ ./dfc dfc.conf
+Run on command line in another terminal - gcc dfs.c -o dfs - to compile
+Run the executable: $ ./dfs /DFS1 10001 
+Run the executable: $ ./dfs /DFS2 10002 
+Run the executable: $ ./dfs /DFS3 10003 
+Run the executable: $ ./dfs /DFS4 10004 
+OR you can run a make clean, make, and then run the executables for both client and server
+
+---Specific Funcitons---
+dfs.c
+Main() - main execution of the server side
+struct config dfsConf() - parsing the configuration file
+char *xorencrypt(char *string, char *key) -decryption
+
+
+dfc.c
+main() - main execution of the client side
+int connectport(const char *portnumber) - port number connection
+int hash(char * filename) - hashing 
+char* xorencrypt(char *string, char *key) - encryption
+struct config dfcConf(char * conf) - parsing the configuration file
+
+
+---General Description---
+The purpose of this assignment was to create a distributed file system which is a client / server program that allows the client to store and retreive files on multiple servers. The file was split into 4 pieces and stored on these 4 serves with 2 chunks on each. One client is uploading and downloading files to and from these 4 servers in order to create redundancy. These files were placed on the particular 4 servers via a MD5HASH function/library. The program incorporates the use of GET, PUT, LIST, and MKDIR requests in order to assisting in the uploading, downloading, and accessing each of these files. The configuration files are used for username and password authorization of the client/server due to the encrypted functionality incorportated. There is an ability to have multiple connection handling, timeouts, reliability through redundacy, file piece handling, privacy through encryption, data encryption, and subfoldering. 
+
+
+
+
+

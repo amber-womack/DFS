@@ -20,29 +20,29 @@
 #define MAX_CLIENTS 10 // max clients to have in wait queue, listen call used by kernel
 #define MAX_DATA 1024 // size of the buffer, passed to send and receive
 
+
 struct config {
     char * userOne;
     char * userTwo;
     char * passOne;
     char * passTwo;
 };
+//-------------------------------------- encryption() ------------------------------------------------
 
 // encryption
-char * xorencrypt(char * message, char * key) {
-    size_t messagelen = strlen(message);
-    size_t keylen = strlen(key);
+// char *xorencrypt(char *string, char *key)
+// {
+//     int length = strlen(key);
+//     int i = 0;
+//     while(i < strlen(string))
+//     {
+//         string[i] = string[i] ^ key[i % length];
+//         i++;
+//     }
+//     return string;
+// }
 
-    char * encrypted = malloc(messagelen+1);
-
-    int i;
-    for(i = 0; i < messagelen; i++) {
-        encrypted[i] = message[i] ^ key[i % keylen];
-    }
-    encrypted[messagelen] = '\0';
-
-    return encrypted;
-}
-
+//-------------------------------------- dfsConf() ------------------------------------------------
 //struct to parse the dfs.conf file
 struct config dfsConf(){  
 
@@ -88,13 +88,126 @@ struct config dfsConf(){
     free(source);
     return configfile;
 }
+//-------------------------------------- put() ------------------------------------------------
+void put(char *filename1, char *filename2, char *username, char *password, char *reqType, 
+            char *messageSize, char *subfolderOnOf, char *subfolder, char *serverFolder, char *filename, int new1){
+    printf("put %s\n", username);
+    printf("put %s\n", password);
+    printf("put %s\n", reqType);
+    printf("put %s\n", messageSize);
+    
+    int msgSize = atoi(messageSize);
+    char message1[msgSize];
+    char message2[msgSize];
+
+    //READ IN THE FILE 1 AND MESSAGE 1
+    read(new1, filename1, 256);
+    read(new1, message1, msgSize);
+   // printf("THIS IS MESSAGE 1 encrypted  %s\n", message1);
+    
+    // char * message1;
+    // message1 = xorencrypt(message1EN, configcount.passOne); 
+    // printf("THIS IS MESSAGE 1   %s\n", message1);
+   
+    //READ IN FILE 2 AND MESSAGE 2
+    read(new1, filename2, 256);
+    read(new1, message2, msgSize); 
+
+    // char * message2;
+    // message2 = xorencrypt(message2EN, configcount.passOne);
+    // printf("THIS IS MESSAGE 2   %s\n", message2);
+
+    //CONCAT THE FILENAMES 1 and 2
+    // struct stat st = {0};
+    char *newstr1 = calloc(256,1);
+    strcat(newstr1,".");
+    strcat(newstr1, serverFolder);
+    mkdir(newstr1, 0777);
+    strcat(newstr1, "/");
+    strcat(newstr1,username);
+    mkdir(newstr1, 0777);
+    printf("subfolder %s\n", subfolderOnOf);
+    if(strcmp(subfolderOnOf, "Subfoldering On") == 0) {
+        strcat(newstr1, subfolder);
+        mkdir(newstr1, 0777);
+        strcat(newstr1, "/");
+        strcat(newstr1, filename1);
+        printf("filename 1 on server = %s\n", newstr1);
+    }
+    else {
+        strcat(newstr1, "/");
+        strcat(newstr1, filename1);
+        printf("filename 1 on server = %s\n", newstr1);
+    }
+
+    char *newstr2 = calloc(256,1);
+    strcat(newstr2,".");
+    strcat(newstr2, serverFolder);
+    mkdir(newstr2, 0777);
+    strcat(newstr2, "/");
+    strcat(newstr2,username);
+    mkdir(newstr2, 0777);
+    printf("subfolder %s\n", subfolderOnOf);
+    if(strcmp(subfolderOnOf, "Subfoldering On") == 0){
+        strcat(newstr2, subfolder);
+        mkdir(newstr2, 0777);
+        strcat(newstr2, "/");
+        strcat(newstr2, filename2);
+        printf("filename 1 on server = %s\n", newstr2);
+    }
+    else {
+        strcat(newstr2, "/");
+        strcat(newstr2, filename2);
+        printf("filename 2 on server = %s\n", newstr2);
+    }
+    char * source = malloc(MAX_DATA);
+
+    //WRITING THE MESSAGE TO EACH FILE
+    FILE *fp1 = fopen(newstr1, "w");
+    printf("file to write to = %s\n", newstr1);
+    if (fp1 != NULL){
+       // ssize_t newlen1 = write(new1, message1, strlen(message1));
+        fputs(message1, fp1);
+       // printf("%li\n", newlen1); //length of file
+        printf("%s\n", message1); //message 1
+        if(fp1 == NULL){
+           printf("Error opening file!");
+           exit(1);
+       }
+        fclose(fp1);
+    }
+    printf("placing\n");
+    FILE *fp2 = fopen(newstr2, "w");
+    printf("file to write to = %s\n", newstr2);
+    if (fp2 != NULL){
+        fputs(message2, fp2);
+        printf("%s\n", message2); //message 2
+        if(fp2 == NULL){
+           printf("Error opening file!");
+           exit(1);
+       }
+        fclose(fp2);
+    }
+    printf("you are leaving put\n");
+
+    //free(message2);
+    //free(message1);
+    free(newstr1);
+    free(newstr2);
+    free(source);
+}
+//-------------------------------------- get() ------------------------------------------------
+
+
+void get(char * messageSize, int new1, char * serverFolder){
+}
+//-------------------------------------- main() ------------------------------------------------
 
 int main(int argc, char *argv[]){
-
     struct config configcount;
     configcount = dfsConf();
-
-   // struct config authorized;
+    char * serverFolder;
+    serverFolder = argv[1];
 
     //struct type server, contains port to which the server is bound locally
     //and client information connecting to us
@@ -108,9 +221,6 @@ int main(int argc, char *argv[]){
 
     unsigned int sockaddr_len  = sizeof(struct sockaddr_in); //size of the socket calls //////////////? need multiple?? 
 
-    
-
-    
     // ESTABLISH SOCKET - allows for a physical connection between the client and server
     if((sock1 = socket(AF_INET, SOCK_STREAM, 0)) == ERROR){
         perror("socket1: ");
@@ -141,9 +251,7 @@ int main(int argc, char *argv[]){
         exit(-1);
     }
 
-    
     while(1){ // WAIT FOR CLIENT CONNECTION
-
         // BLOCK ON ACCEPT, WAIT FOR CLIENT
         //we block on accept, accept returns when the client comes in
         //recevie data from the client, sends back the data to the client
@@ -157,196 +265,119 @@ int main(int argc, char *argv[]){
         //print that the client is accepted and which port and IP
         printf("New Client connected from port no %d and IP %s\n", ntohs(client1.sin_port), inet_ntoa(client1.sin_addr));
        
-       
         //READS HEADER FROM CLIENT
         //PASSWORD HANDLING, REQUEST TYPE, MESSAGE SIZE
-        char filename1[256];
-        char filename2[256];
-        char username[256];
-        char password[256];
-        char reqType[256];
-        char messageSize[256];
-        char subfolderOnOf[256];
-        char subfolder[256];
-
-        // read(new1, filename1, 256);                
-        read(new1, username, 256);
-        read(new1, password, 256); //go down there? 
-        read(new1, reqType, 256);
-        read(new1, messageSize, 256);
-        read(new1, subfolderOnOf, 256);
-        read(new1, subfolder, 256);
-
-        //CHECK IF AUTHORIZED
-        int check = 0;
-
-        printf("username is = %s\n", username);
-        printf("password is = %s\n", password);
-
-        printf("you are befor pass check");
-        if(strcmp(username,configcount.userOne) == 0){
-            if(strcmp(password,configcount.passOne) == 0){
-                check = 1;
-            }
-            else{
-                check = 0;
-            }
-        }
-        //is the user 2 the same? and if so
-        else if(strcmp(username,configcount.userTwo) == 0){
-            //check the password is the same
-            if (strcmp(password, configcount.passTwo) == 0){
-                //if both are correct, then its valid user/pass
-                check = 1;
-            }      
-            else{ //its not the right password and invalid
-                check = 0;
-            }
-        }
-        else{ //its invalid user and pass and send to user
-            check = 0;
-        }
-
-        //sending a valid or invalid to user
-        if(check == 0){
-            send(new1, "Inval", 5, 0);
-            close(new1);
-        }
-        else{
-            send(new1, "Valid", 5, 0);
-            
-   			int msgSize = atoi(messageSize);
-    		char message1[msgSize];
-    		char message2[msgSize];
 			
-			//Forking and keeping while open
-            if(!fork() ){ 
-                close(sock1);
-                while(1){
+		//Forking and keeping while open
+        if(!fork() ){ 
+            close(sock1);
+            while(1){
+                char *filename1 = calloc(256,sizeof(char));
+                char *filename2 = calloc(256,sizeof(char));
+                char *username = calloc(256,sizeof(char));
+                char *password = calloc(256,sizeof(char));
+                char *reqType = calloc(256,sizeof(char));
+                char *messageSize = calloc(256,sizeof(char));
+                char *subfolderOnOf = calloc(256,sizeof(char));
+                char *subfolder = calloc(256,sizeof(char));
+                char *filename = calloc(256,sizeof(char));
 
-                    printf("%s\n", username);
-                    printf("%s\n", password);
-                    printf("%s\n", reqType);
-                    printf("%s\n", messageSize);
-                    printf("%d\n", msgSize);
-                    
+                // char filename1[256];
+                // char filename2[256];
+                // char username[256];
+                // char password[256];
+                // char reqType[256];
+                // char messageSize[256];
+                // char subfolderOnOf[256];
+                // char subfolder[256];
+                // char filename[256];
 
-                    //READ IN THE FILE 1 AND MESSAGE 1
-                    read(new1, filename1, 256);
-                    read(new1, message1, msgSize); 
-                    //printf("THIS IS MESSAGE 1   %s\n", message1);
-                   
-                    //READ IN FILE 2 AND MESSAGE 2
-                    read(new1, filename2, 256);
-                    read(new1, message2, msgSize); 
-                    //printf("THIS IS MESSAGE 2   %s\n", message2);
+                // read(new1, filename1, 256);                
+                read(new1, username, 256);
+                read(new1, password, 256); 
+                read(new1, reqType, 256);
+                read(new1, messageSize, 256);
+                read(new1, subfolderOnOf, 256);
+                read(new1, subfolder, 256);
+                read(new1, filename, 256);
 
+                //CHECK IF AUTHORIZED
+                int check = 0;
 
-                    //CONCAT THE FILENAMES 1 and 2
-                   // struct stat st = {0};
-                    char *newstr1 = calloc(256,1);
-                    strcat(newstr1,".");
-                    strcat(newstr1, argv[1]);
-                    mkdir(newstr1, 0777);
-                    strcat(newstr1, "/");
-                    strcat(newstr1,username);
-                    mkdir(newstr1, 0777);
-                    printf("subfolder on %s\n", subfolderOnOf);
-                    if(strcmp(subfolderOnOf, "Subfoldering On") == 0) {
-                        strcat(newstr1, subfolder);
-                        mkdir(newstr1, 0777);
-                        strcat(newstr1, "/");
-                        strcat(newstr1, filename1);
-                        printf("filename 1 on server = %s\n", newstr1);
+                printf("username is = %s\n", username);
+                printf("password is = %s\n", password);
+                printf("filename is = %s\n", filename);
+                printf("subfolder is = %s\n", subfolder);
+                if(strcmp(username,configcount.userOne) == 0){
+                    if(strcmp(password,configcount.passOne) == 0){
+                        check = 1;
                     }
-                    else {
-                        strcat(newstr1, "/");
-                        strcat(newstr1, filename1);
-                        printf("filename 1 on server = %s\n", newstr1);
+                    else{
+                        check = 0;
                     }
-
-                    char *newstr2 = calloc(256,1);
-                    strcat(newstr2,".");
-                    strcat(newstr2, argv[1]);
-                    mkdir(newstr2, 0777);
-                    strcat(newstr2, "/");
-                    strcat(newstr2,username);
-                    mkdir(newstr2, 0777);
-                    printf("subfolder off %s\n", subfolderOnOf);
-                    if(strcmp(subfolderOnOf, "Subfoldering On") == 0){
-                        strcat(newstr2, subfolder);
-                        mkdir(newstr2, 0777);
-                        strcat(newstr2, "/");
-                        strcat(newstr2, filename2);
-                        printf("filename 1 on server = %s\n", newstr2);
-                    }
-                    else {
-                        strcat(newstr2, "/");
-                        strcat(newstr2, filename2);
-                        printf("filename 2 on server = %s\n", newstr2);
-                    }
-
-                
-                    char * source = malloc(MAX_DATA);
-
-                    //WRITING THE MESSAGE TO EACH FILE
-                    FILE *fp1 = fopen(newstr1, "w");
-                    printf("file to write to = %s\n", newstr1);
-                    if (fp1 != NULL){
-                       // ssize_t newlen1 = write(new1, message1, strlen(message1));
-                        fputs(message1, fp1);
-                       // printf("%li\n", newlen1); //length of file
-                        printf("%s\n", message1); //message 1
-                        if(fp1 == NULL){
-                           printf("Error opening file!");
-                           exit(1);
-                       }
-                        fclose(fp1);
-                    }
-
-                    FILE *fp2 = fopen(newstr2, "w");
-                    printf("file to write to = %s\n", newstr2);
-                    if (fp2 != NULL){
-                        fputs(message2, fp2);
-                        printf("%s\n", message2); //message 2
-                        if(fp2 == NULL){
-                           printf("Error opening file!");
-                           exit(1);
-                       }
-                        fclose(fp2);
-                    }
-
-                    free(newstr1);
-                    free(newstr2);
-                    free(source);
-                    close(new1);
-                    exit(0); 
-
                 }
+                //is the user 2 the same? and if so
+                else if(strcmp(username,configcount.userTwo) == 0){
+                    //check the password is the same
+                    if (strcmp(password, configcount.passTwo) == 0){
+                        //if both are correct, then its valid user/pass
+                        check = 1;
+                    }      
+                    else{ //its not the right password and invalid
+                        check = 0;
+                    }
+                }
+                else{ //its invalid user and pass and send to user
+                    check = 0;
+                }
+
+                //sending a valid or invalid to user
+                if(check == 0){
+                    send(new1, "Inval", 5, 0);
+                    close(new1);
+                }
+                else{
+                    send(new1, "Valid", 5, 0);
+                    if (strcmp(reqType, "GET") == 0){
+                        printf("valid GET request\n");
+                       // get();
+                       get(messageSize, new1, serverFolder);   
+                    }
+                    else if (strcmp(reqType, "PUT") == 0){
+                        printf("valid PUT request\n");
+                       // printf("%d\n", subfoldering);
+                        put(filename1, filename2, username, password, reqType, 
+                            messageSize, subfolderOnOf, subfolder, serverFolder, filename, new1);
+                        printf("you have left put\n");
+                    }
+                    else if (strcmp(reqType, "LIST") == 0){
+                        printf("valid LIST request\n");
+                    }
+                    printf("free vars\n");
+                    free(filename1);
+                    free(filename2);
+                    free(username);
+                    free(password);
+                    free(reqType);
+                    free(messageSize);
+                    free(subfolderOnOf);
+                    free(subfolder);
+                    free(filename);
+                    close(new1);
+                    exit(0);
+                    break;
+                } 
             }
         }
     }
-
-
-
+    
     //printf("\nClient Disconnected\n");
     //close(new4);
     int pid;
-    do
-    {
+    do{
         pid = wait(NULL);
     }while(pid != -1);
     return 0;
+
 }
 
-
-//Cant get while loop to work for reading in from client
-    //char buf[msgSize];
-               //  ssize_t bytes_read;
-               //  do {
-               //      bytes_read = read(new1, buf, msgSize);
-               //      printf("%zd", bytes_read);
-               //  } while (bytes_read > 0); 
-               //  printf("%s", buf);  
-                // read(new1, message1, msgSize);
-                //mkdir of server files

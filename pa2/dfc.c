@@ -1,5 +1,7 @@
 //to compile : gcc -Wall myclient.c -o myclient -lcrypto -lssl
 //gcc -Wall myserver.c -o myserver -lcrypto -lssl
+//Reference - http://stackoverflow.com/questions/10324611/how-to-calculate-the-md5-hash-of-a-large-file-in-c
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h> //for the sockets
@@ -36,24 +38,21 @@ struct config {
     char * userName;
     char * password;
 };
+//-------------------------------------- encryption() ------------------------------------------------
 
 // encryption
-char * xorencrypt(char * message, char * key) {
-    size_t messagelen = strlen(message);
-    size_t keylen = strlen(key);
-
-    char * encrypted = malloc(messagelen+1);
-
-    int i;
-    for(i = 0; i < messagelen; i++) {
-        encrypted[i] = message[i] ^ key[i % keylen];
+char* xorencrypt(char *string, char *key){
+    int length = strlen(key);
+    int i = 0;
+    while(i < strlen(string))
+    {
+        string[i] = string[i] ^ key[i % length];
+        i++;
     }
-    encrypted[messagelen] = '\0';
-
-    return encrypted;
+    return string;
 }
 
-//----------------------------------------------------------------------------------------------
+//-------------------------------------- dfcConf() ------------------------------------------------
 //struct to parse the dfc.conf file
 struct config dfcConf(char * conf){  
 
@@ -115,6 +114,8 @@ struct config dfcConf(char * conf){
     //then return the struct
     return configfile;
 }
+//-------------------------------------- connectionport() ------------------------------------------------
+
 
 //COONECT THE PORT AND IP ADDRESS 
 int connectport(const char *portnumber){
@@ -138,6 +139,8 @@ int connectport(const char *portnumber){
     }
     return sock;
 }
+//-------------------------------------- hash() ------------------------------------------------
+
 int hash(char * filename){
 
     int bytes;
@@ -169,11 +172,13 @@ int hash(char * filename){
     fclose (inFile);
     return md5hash;
 }
+//-------------------------------------- put() ------------------------------------------------
 
 //￼PUT command uploads files onto DFS
 void put(char * filename, char * requestType, struct config configcount, int subfoldering, char * subfolder){
     FILE *fp_original;
     long int filesize;
+   // struct stat st;
 
     fp_original=fopen(filename, "r");
     if(fp_original == NULL ) {
@@ -187,6 +192,8 @@ void put(char * filename, char * requestType, struct config configcount, int sub
     // Find the size of the file (using fseek and ftell). 
     fseek(fp_original, 0, 2);
     filesize = ftell(fp_original);
+   ////// char *originalFile = calloc(filesize, 1);
+
     printf("the size of the file in bytes is : %ld\n", filesize);
     //Then seek back to the beginning
     rewind(fp_original);
@@ -194,6 +201,21 @@ void put(char * filename, char * requestType, struct config configcount, int sub
     //k = size/4;
    // printf("%li\n", k);
 
+    // stat(filename, &st);
+    // long int bigsize = st.st_size*2;
+    // char *originalFile = calloc(bigsize, 1);
+    // fread(originalFile, 1, bigsize, fp_original);
+    // originalFile = xorencrypt(originalFile, configcount.password);
+    // filesize = strlen(originalFile);
+
+    
+   ///// // fread(originalFile, 1, filesize, fp_original);
+   ///// // originalFile = xorencrypt(originalFile, configcount.password);
+    // printf("encrypt%s\n", originalFile);
+    // originalFile = xorencrypt(originalFile, configcount.password);
+    // printf("decrypt%s\n", originalFile);
+
+    //filesize = strlen(originalFile);
     // Read one character at a time (use getc) and write to the corresponding file (putc)
     // Use sprintf(fname, "%d.txt", index) to build names like "1.txt"
     // Use fopen to open files and keep a FILE *current to which you write at each step
@@ -405,10 +427,6 @@ void put(char * filename, char * requestType, struct config configcount, int sub
     fclose(fp_piece4);
     fclose(fp_original);
     
-    
-   
-
-
     //HAD TO CLOSE AND REOPEN THE FILE
     fp_piece1 = fopen(".1.txt.1", "rb");
     fp_piece2 = fopen(".1.txt.2", "rb");
@@ -449,8 +467,9 @@ void put(char * filename, char * requestType, struct config configcount, int sub
     sprintf(msgSize, "%d", piecesize);
     printf("Subfolder in PUT = %s\n", subfolder);
     //SEND THE HEADERS
-   // send(dfs1, piece_name1, 256, 0);
+    // send(dfs1, piece_name1, 256, 0);
 
+    printf("before send server 1\n");
     send(dfs1, configcount.userName, 256, 0);
     send(dfs1, configcount.password, 256, 0);
     send(dfs1, requestType, 256, 0);
@@ -462,7 +481,9 @@ void put(char * filename, char * requestType, struct config configcount, int sub
         send(dfs1, "Subfoldering Of", 256, 0);
     }
     send(dfs1, subfolder,256, 0);
+    send(dfs1, filename, 256, 0);
 
+    printf("before send server 2\n");
    // send(dfs2, piece_name2, 256, 0);
     send(dfs2, configcount.userName, 256, 0);
     send(dfs2, configcount.password, 256, 0);
@@ -475,8 +496,10 @@ void put(char * filename, char * requestType, struct config configcount, int sub
         send(dfs2, "Subfoldering Of", 256, 0);
     }
     send(dfs2, subfolder,256, 0);
+    send(dfs2, filename, 256, 0);
 
 
+    printf("before send server 3\n");
    // send(dfs3, piece_name3, 256, 0);
     send(dfs3, configcount.userName, 256, 0);
     send(dfs3, configcount.password, 256, 0);
@@ -489,26 +512,36 @@ void put(char * filename, char * requestType, struct config configcount, int sub
         send(dfs3, "Subfoldering Of", 256, 0);
     }
     send(dfs3, subfolder,256, 0);
+    send(dfs3, filename, 256, 0);
 
-
+    printf("before send server 4\n");
    // send(dfs4, piece_name4, 256, 0);
+    printf("send 1\n");
     send(dfs4, configcount.userName, 256, 0);
+    printf("send 2\n");
     send(dfs4, configcount.password, 256, 0);
+    printf("send 3\n");
     send(dfs4, requestType, 256, 0);
+    printf("send 4\n");
     send(dfs4, msgSize, 256, 0);
     if(subfoldering == 1){
+        printf("send 5\n");
         send(dfs4, "Subfoldering On", 256, 0);
     }
     else{
+        printf("send 5\n");
         send(dfs4, "Subfoldering Of", 256, 0);
     }
+    printf("send 6\n");
     send(dfs4, subfolder,256, 0);
+    printf("send 7\n");
+    send(dfs4, filename, 256, 0);
 
     char *  newstr1 = calloc(5,1);
     char *  newstr2 = calloc(5,1);
     char *  newstr3 = calloc(5,1);
     char *  newstr4 = calloc(5,1);
-
+    printf("before reads");
     //TO ADD THE USERNAMES 
     read(dfs1, newstr1, 5);
     read(dfs2, newstr2, 5);
@@ -517,7 +550,7 @@ void put(char * filename, char * requestType, struct config configcount, int sub
     if(strcmp(newstr1,"Inval") == 0){
         printf("Invalid Username/Password. Plese Try Again\n" );
     }
-
+    printf("after reads");
     char bufferpiece1[piecesize];
     char bufferpiece2[piecesize];
     char bufferpiece3[piecesize];
@@ -530,14 +563,13 @@ void put(char * filename, char * requestType, struct config configcount, int sub
 
     //WHICH PAIR GOES TO WHICH SERVER BY MD5H
     if(serverDest == 0){
-      
         //piece1
         printf("\nPiece 1, Server 1, 4\n");
 
         fread(bufferpiece1, 1, piecesize, fp_piece1);
-       // send(dfs1, piece_name1, 256, 0); //sending filename
+        send(dfs1, piece_name1, 256, 0); //sending filename
         send(dfs1, bufferpiece1, piecesize, 0);
-        //send(dfs4, piece_name1, 256, 0); //sending filename
+        send(dfs4, piece_name1, 256, 0); //sending filename
         send(dfs4, bufferpiece1, piecesize, 0);
         
 
@@ -545,9 +577,9 @@ void put(char * filename, char * requestType, struct config configcount, int sub
         printf("\nPiece 2, Server 1, 2\n");
 
         fread(bufferpiece2, 1, piecesize, fp_piece2);
-        //send(dfs1, piece_name2, 256, 0); //sending filename
+        send(dfs1, piece_name2, 256, 0); //sending filename
         send(dfs1, bufferpiece2, piecesize, 0);
-       // send(dfs2, piece_name2, 256, 0); //sending filename
+        send(dfs2, piece_name2, 256, 0); //sending filename
         send(dfs2, bufferpiece2, piecesize, 0);
         
 
@@ -555,32 +587,25 @@ void put(char * filename, char * requestType, struct config configcount, int sub
         printf("\nPiece 3, Server 2, 3\n");
 
         fread(bufferpiece3, 1, piecesize, fp_piece3);
-       // send(dfs2, piece_name3, 256, 0); //sending filename
+        send(dfs2, piece_name3, 256, 0); //sending filename
         send(dfs2, bufferpiece3, piecesize, 0);
-        //send(dfs3, piece_name3, 256, 0); //sending filename
+        send(dfs3, piece_name3, 256, 0); //sending filename
         send(dfs3, bufferpiece3, piecesize, 0);
         
         // piece4
         printf("\nPiece 4, Server 3, 4\n");
 
         fread(bufferpiece4, 1, piecesizelast, fp_piece4);
-       // send(dfs4, piece_name4, 256, 0); //sending filename
+        send(dfs4, piece_name4, 256, 0); //sending filename
         send(dfs4, bufferpiece4, piecesizelast, 0);
-       // send(dfs3, piece_name4, 256, 0); //sending filename
+        send(dfs3, piece_name4, 256, 0); //sending filename
         send(dfs3, bufferpiece4, piecesizelast, 0);
     }
     else if(serverDest == 1){
-       
         //piece1
         printf("\nPiece 1, Server 1, 2\n");
 
-        // char *bufferpiece1EN;
-        // char *bufferpiece2EN;
-        // char *bufferpiece3EN;
-        // char *bufferpiece4EN;
-
         fread(bufferpiece1, 1, piecesize, fp_piece1);
-        //bufferpiece1EN = xorencrypt(bufferpiece1, configcount.password);
         send(dfs1, piece_name1, 256, 0); //sending filename
         send(dfs1, bufferpiece1, piecesize, 0);
         send(dfs2, piece_name1, 256, 0); //sending filename
@@ -616,11 +641,6 @@ void put(char * filename, char * requestType, struct config configcount, int sub
         send(dfs1, bufferpiece4, piecesizelast, 0);
         send(dfs4, piece_name4, 256, 0); //sending filename
         send(dfs4, bufferpiece4, piecesizelast, 0);
-
-        // free(bufferpiece1EN);
-        // free(bufferpiece2EN);
-        // free(bufferpiece3EN);
-        // free(bufferpiece4EN);
     }
     else if(serverDest == 2){
        // printf("\nServer Destination 1, piece 1\n");
@@ -634,18 +654,18 @@ void put(char * filename, char * requestType, struct config configcount, int sub
         printf("\nPiece 1, Server 2, 3\n");
 
         fread(bufferpiece1, 1, piecesize, fp_piece1);
-       // send(dfs2, piece_name1, 256, 0); //sending filename
+        send(dfs2, piece_name1, 256, 0); //sending filename
         send(dfs2, bufferpiece1, piecesize, 0);
-       // send(dfs3, piece_name1, 256, 0); //sending filename
+        send(dfs3, piece_name1, 256, 0); //sending filename
         send(dfs3, bufferpiece1, piecesize, 0);
 
         //piece2
         printf("\nPiece 2, Server 3, 4\n");
 
         fread(bufferpiece2, 1, piecesize, fp_piece2);
-       // send(dfs4, piece_name2, 256, 0); //sending filename
+        send(dfs4, piece_name2, 256, 0); //sending filename
         send(dfs4, bufferpiece2, piecesize, 0);
-       // send(dfs3, piece_name2, 256, 0); //sending filename
+        send(dfs3, piece_name2, 256, 0); //sending filename
         send(dfs3, bufferpiece2, piecesize, 0);
         
 
@@ -653,18 +673,18 @@ void put(char * filename, char * requestType, struct config configcount, int sub
         printf("\nPiece 3, Server 1, 4\n");
 
         fread(bufferpiece3, 1, piecesize, fp_piece3);
-       // send(dfs1, piece_name3, 256, 0); //sending filename
+        send(dfs1, piece_name3, 256, 0); //sending filename
         send(dfs1, bufferpiece3, piecesize, 0);
-       // send(dfs4, piece_name3, 256, 0); //sending filename
+        send(dfs4, piece_name3, 256, 0); //sending filename
         send(dfs4, bufferpiece3, piecesize, 0);
         
         // piece4
         printf("\nPiece 4, Server 1, 2\n");
 
         fread(bufferpiece4, 1, piecesizelast, fp_piece4);
-       // send(dfs1, piece_name4, 256, 0); //sending filename
+        send(dfs1, piece_name4, 256, 0); //sending filename
         send(dfs1, bufferpiece4, piecesizelast, 0);
-       // send(dfs2, piece_name4, 256, 0); //sending filename
+        send(dfs2, piece_name4, 256, 0); //sending filename
         send(dfs2, bufferpiece4, piecesizelast, 0);
     }
     //--------------------------------------
@@ -674,9 +694,9 @@ void put(char * filename, char * requestType, struct config configcount, int sub
         printf("\nPiece 1, Server 3, 4\n");
 
         fread(bufferpiece1, 1, piecesize, fp_piece1);
-      //  send(dfs4, piece_name1, 256, 0); //sending filename
+        send(dfs4, piece_name1, 256, 0); //sending filename
         send(dfs4, bufferpiece1, piecesize, 0);
-       // send(dfs3, piece_name1, 256, 0); //sending filename
+        send(dfs3, piece_name1, 256, 0); //sending filename
         send(dfs3, bufferpiece1, piecesize, 0);
         
 
@@ -684,9 +704,9 @@ void put(char * filename, char * requestType, struct config configcount, int sub
         printf("\nPiece 2, Server 4, 1\n");
 
         fread(bufferpiece2, 1, piecesize, fp_piece2);
-        //send(dfs1, piece_name2, 256, 0); //sending filename
+        send(dfs1, piece_name2, 256, 0); //sending filename
         send(dfs1, bufferpiece2, piecesize, 0);
-       // send(dfs4, piece_name2, 256, 0); //sending filename
+        send(dfs4, piece_name2, 256, 0); //sending filename
         send(dfs4, bufferpiece2, piecesize, 0);
         
 
@@ -694,19 +714,19 @@ void put(char * filename, char * requestType, struct config configcount, int sub
         printf("\nPiece 3, Server 1, 2\n");
 
         fread(bufferpiece3, 1, piecesize, fp_piece3);
-        //send(dfs1, piece_name3, 256, 0); //sending filename
+        send(dfs1, piece_name3, 256, 0); //sending filename
         send(dfs1, bufferpiece3, piecesize, 0);
-        //send(dfs2, piece_name3, 256, 0); //sending filename
+        send(dfs2, piece_name3, 256, 0); //sending filename
         send(dfs2, bufferpiece3, piecesize, 0);
         
         // piece4
         printf("\nPiece 4, Server 2, 3\n");
 
         fread(bufferpiece4, 1, piecesizelast, fp_piece4);
-       // send(dfs2, piece_name4, 256, 0); //sending filename
-        send(dfs2, bufferpiece4, piecesize, 0);
-       // send(dfs3, piece_name4, 256, 0); //sending filename
-        send(dfs3, bufferpiece4, piecesize, 0);
+        send(dfs2, piece_name4, 256, 0); //sending filename
+        send(dfs2, bufferpiece4, piecesizelast, 0);
+        send(dfs3, piece_name4, 256, 0); //sending filename
+        send(dfs3, bufferpiece4, piecesizelast, 0);
     }
    
     fclose(fp_piece1);
@@ -722,20 +742,84 @@ void put(char * filename, char * requestType, struct config configcount, int sub
     free(newstr3);
     free(newstr4);
 }
+//-------------------------------------- get() ------------------------------------------------
+
 // GET command downloads all available pieces of a file from all available DFS, if
 // the file is reconstructable then write the file into your working folder. If the
 // file is not reconstructable, then print “File is incomplete.”
-void get(){
+void get(char * filename, char * requestType, struct config configcount, int subfoldering, char * subfolder){
 
+    char msgSize[15];
+    // sprintf(msgSize, "%d", filename);
+    //printf("Subfolder in GET = %s\n", subfolder);
+
+    send(dfs1, configcount.userName, 256, 0);
+    send(dfs1, configcount.password, 256, 0);
+    send(dfs1, requestType, 256, 0);
+    send(dfs1, msgSize, 256, 0);
+    if(subfoldering == 1){
+        send(dfs1, "Subfoldering On", 256, 0);
+    }
+    else{
+        send(dfs1, "Subfoldering Of", 256, 0);
+    }
+    send(dfs1, subfolder,256, 0);
+    send(dfs1, filename, 256, 0);
+
+   // send(dfs2, piece_name2, 256, 0);
+    send(dfs2, configcount.userName, 256, 0);
+    send(dfs2, configcount.password, 256, 0);
+    send(dfs2, requestType, 256, 0);
+    send(dfs2, msgSize, 256, 0);
+    if(subfoldering == 1){
+        send(dfs2, "Subfoldering On", 256, 0);
+    }
+    else{
+        send(dfs2, "Subfoldering Of", 256, 0);
+    }
+    send(dfs2, subfolder,256, 0);
+    send(dfs2, filename, 256, 0);
+
+
+   // send(dfs3, piece_name3, 256, 0);
+    send(dfs3, configcount.userName, 256, 0);
+    send(dfs3, configcount.password, 256, 0);
+    send(dfs3, requestType, 256, 0);
+    send(dfs3, msgSize, 256, 0);
+    if(subfoldering == 1){
+        send(dfs3, "Subfoldering On", 256, 0);
+    }
+    else{
+        send(dfs3, "Subfoldering Of", 256, 0);
+    }
+    send(dfs3, subfolder,256, 0);
+    send(dfs3, filename, 256, 0);
+
+
+   // send(dfs4, piece_name4, 256, 0);
+    send(dfs4, configcount.userName, 256, 0);
+    send(dfs4, configcount.password, 256, 0);
+    send(dfs4, requestType, 256, 0);
+    send(dfs4, msgSize, 256, 0);
+    if(subfoldering == 1){
+        send(dfs4, "Subfoldering On", 256, 0);
+    }
+    else{
+        send(dfs4, "Subfoldering Of", 256, 0);
+    }
+    send(dfs4, subfolder,256, 0);
+    send(dfs4, filename, 256, 0);
 }
+//-------------------------------------- list() ------------------------------------------------
+
 //￼LIST command inquires what file is stored on DFS servers, and print file
 //names stored under Username on DFS servers
 void list(){
 
 }
 
+//-------------------------------------- main() ------------------------------------------------
 int main(int argc, char *argv[]){
-
     char * line;
     int parsecount = 0;
     char * source;
@@ -752,15 +836,15 @@ int main(int argc, char *argv[]){
     //call parsing function of dfc.conf
     struct config configcount;
     configcount = dfcConf(conf);
-
-    //connect the portnumber of each server from the config file
-    dfs1 = connectport(configcount.dfsOne);
-    dfs2 = connectport(configcount.dfsTwo);
-    dfs3 = connectport(configcount.dfsThree);
-    dfs4 = connectport(configcount.dfsFour);
    
    //READ IN THE FILE
     while(fgets(buf, MAX_DATA, stdin)) {
+        //connect the portnumber of each server from the config file
+        dfs1 = connectport(configcount.dfsOne);
+        dfs2 = connectport(configcount.dfsTwo);
+        dfs3 = connectport(configcount.dfsThree);
+        dfs4 = connectport(configcount.dfsFour);
+
         buf[strlen(buf) - 1] = '\0';    /* insure line null-terminated  */
        
         source = buf;
@@ -811,7 +895,7 @@ int main(int argc, char *argv[]){
                 printf("invalid file for GET\n");
                 exit(-1);
             } 
-           // get();      
+           get(filename, "GET", configcount, subfoldering, subfolder);    
         }
         else if (strcmp(request, "PUT") == 0){
             printf("valid PUT request\n");
@@ -839,8 +923,8 @@ int main(int argc, char *argv[]){
             printf("Invalid request sent\n");
         }
         filename = NULL;
-    
     }
+    printf("outside while");
 
     //close all the ports 
     close(dfs1);
